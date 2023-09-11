@@ -1,0 +1,60 @@
+version: '2'
+services:
+  # MongoDB: https://hub.docker.com/_/mongo/
+  mongodb:
+    image: mongo:4.2
+    volumes:
+      - /home/ubuntu/graylog-data/mongo:/data/db
+  # Elasticsearch: https://www.elastic.co/guide/en/elasticsearch/reference/5.6/docker.html
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.10.2
+    environment:
+      - TZ=Aisa/Taipei
+      - http.host=0.0.0.0
+      - transport.host=localhost
+      - network.host=0.0.0.0
+      - http.cors.allow-origin=*
+      - http.cors.enabled=true
+      - discovery.type=single-node
+      - 'ES_JAVA_OPTS=-Xms2048m -Xmx2048m'
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    mem_limit: 2.5g
+    ports:
+      - 9200:9200
+    volumes:
+      - /home/ubuntu/graylog-data/elasticsearch:/usr/share/elasticsearch/data
+  # Graylog: https://hub.docker.com/r/graylog/graylog/
+  graylog:
+    image: graylog/graylog:4.2.0-1
+    environment:
+      # CHANGE ME!
+      - GRAYLOG_PASSWORD_SECRET=somepasswordpepper
+      # Password: admin
+      - GRAYLOG_ROOT_PASSWORD_SHA2=60620475428a60c5db2e6adb303938a486c5a810a981121e9dbd22243b2e23c5
+      - GRAYLOG_WEB_ENDPOINT_URI=http://10.250.129.84:9000/api
+      - GRAYLOG_HTTP_EXTERNAL_URI=http://10.250.129.84:9000/
+      - GRAYLOG_HTTP_BIND_ADDRESS=0.0.0.0:9000
+    links:
+      - mongodb:mongo
+      - elasticsearch
+    depends_on:
+      - mongodb
+      - elasticsearch
+    ports:
+      # Graylog web interface and REST API
+      - 9000:9000
+      # Syslog TCP
+      - 514:514
+      # Syslog UDP
+      - 514:514/udp
+      # GELF TCP
+      - 12201:12201
+      # GELF UDP
+      - 12201:12201/udp
+    volumes:
+      - /home/ubuntu/graylog-data/graylog/graylogjournal:/usr/share/graylog/data/journal
+      - /home/ubuntu/graylog-data/graylog/graylogconfig:/usr/share/graylog/data/config
+      - /home/ubuntu/graylog-data/graylog/plugin:/usr/share/graylog-server/plugin
